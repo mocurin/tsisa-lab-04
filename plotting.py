@@ -5,12 +5,15 @@ import imageio
 import os
 
 
-def plot_creator(bounds, precision=0.2, function=None):
-    x = np.arange(*bounds[0], precision)
-    y = np.arange(*bounds[1], precision)
+def plot_creator(bounds, precision=0.1, function=None):
+    x0, x1 = bounds[0]
+    x = np.arange(x0, x1 + precision, precision)
+    y0, y1 = bounds[1]
+    y = np.arange(y0, y1 + precision, precision)
     if function is not None:
         x, y = np.meshgrid(x, y)
         z = function(x, y)
+
     def plot_population(population, title, file):
         x_p, y_p = np.transpose(population)
         plt.title(title)
@@ -27,14 +30,22 @@ def plot_creator(bounds, precision=0.2, function=None):
     return plot_population
 
 
-def plot_function(bounds, function):
-    x = np.arange(*bounds[:2], 0.1)
-    y = np.arange(*bounds[2:], 0.1)
+def plot_function(bounds, function, precision=0.1):
+    x0, x1, y0, y1 = bounds
+    x = np.arange(x0, x1 + precision, precision)
+    y = np.arange(y0, y1 + precision, precision)
     x, y = np.meshgrid(x, y)
     z = function(x, y)
-
+    # find maximum
+    i = np.unravel_index(np.argmax(z, axis=None), z.shape)
+    print('MAXIMUM VALUE')
+    print('x:', round(x[i], 3),
+          ' y:', round(y[i], 3),
+          ' z:', round(z[i], 3))
     fig = plt.figure()
     ax = fig.gca(projection='3d')
+    ax.set_xlabel('x')
+    ax.set_ylabel('y')
     ax.plot_surface(x, y, z, linewidth=0, antialiased=False)
     plt.show()
 

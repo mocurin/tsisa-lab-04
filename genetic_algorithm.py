@@ -44,13 +44,18 @@ class GeneticAlgorithm:
                                                     self._crossover,
                                                     self._mutator])
             if self._log:
+                print(str(i), ' ITERATION RESULTS')
+                scores = self._score(population)[:, np.newaxis]
+                log_data(labels=['N', 'X', 'Y', 'Fit'],
+                         data=np.round(np.hstack([population, scores]), 3))
+                print('MEAN: ', np.round(np.mean(scores), 3))
                 plot(population,
                      file='images/' + str(i) + '.png',
                      title=str(i) + ' ITERATION RESULTS')
         return population
 
     def _selector(self, population):
-        scores = np.array([self._function(x, y) for x, y in population])
+        scores = self._score(population)
         # since scores can be negative
         if np.any(scores < 0):
             scores = np.subtract(scores, np.min(scores))
@@ -70,8 +75,7 @@ class GeneticAlgorithm:
             data = np.hstack([np.round(population, 3)[selected],
                               np.round(probas, 3)[selected, np.newaxis]])
             print('SELECTION STAGE')
-            log_data(labels=['N', 'X', 'Y', 'P'],
-                     data=data, width=8, sep='|')
+            log_data(labels=['N', 'X', 'Y', 'P'], data=data)
         return population[selected]
 
     def _crossover(self, population):
@@ -84,9 +88,7 @@ class GeneticAlgorithm:
         population = np.transpose([x_top, y_top])
         if self._log:
             print('CROSSOVER STAGE')
-            log_data(labels=['N', 'X', 'Y'],
-                     data=np.round(population, 3),
-                     width=8, sep='|')
+            log_data(labels=['N', 'X', 'Y'], data=np.round(population, 3))
         return population
 
     def _mutator(self, population):
@@ -105,8 +107,7 @@ class GeneticAlgorithm:
         if self._log:
             print('MUTATION STAGE')
             log_data(labels=['N', 'X', 'Y', 'Dx', 'Dy'],
-                     data=np.hstack([np.round(population, 3), mutation]),
-                     width=8, sep='|')
+                     data=np.hstack([np.round(population, 3), mutation]))
         return population
 
     def _init_population(self):
@@ -116,7 +117,11 @@ class GeneticAlgorithm:
                       for _ in range(self._population)]
         if self._log:
             print('INITIAL POPULATION')
-            log_data(labels=['N', 'X', 'Y'],
-                     data=np.round(population, 3),
-                     width=8, sep='|')
+            scores = self._score(population)[:, np.newaxis]
+            log_data(labels=['N', 'X', 'Y', 'Fit'],
+                     data=np.round(np.hstack([population, scores]), 3))
+            print('MEAN: ', np.round(np.mean(scores), 3))
         return np.array(population)
+
+    def _score(self, population):
+        return np.array([self._function(x, y) for x, y in population])
