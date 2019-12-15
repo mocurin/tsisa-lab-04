@@ -1,7 +1,7 @@
 import random as rd
 from functools import reduce
-from plotting import *
 import numpy as np
+import pandas as pd
 
 
 def roll(proba):
@@ -12,20 +12,14 @@ def switch_check(delta, element, bounds):
     return element + delta > bounds[0] if delta < 0 else element + delta < bounds[1]
 
 
-def log_data(labels, data, width=8, sep='|'):
-    labels = [label.rjust(width) for label in labels]
-    print('', *labels, '', sep=sep)
-    for i, row in enumerate(data):
-        row = [str(elem).rjust(width) for elem in [i, *row]]
-        print('', *row, '', sep='|')
-
-
 class GeneticAlgorithm:
     def __init__(self, m_delta, m_proba):
         self._m_delta = m_delta
         self._m_proba = m_proba
         self._population = 4
         self._select = 3
+        self._log = False
+        self.history = None
 
     def __call__(self, function, bounds, iterations, log=False, seed=42):
         rd.seed(seed)
@@ -33,32 +27,20 @@ class GeneticAlgorithm:
         self._function = function
         self._log = log
         population = self._init_population()
-        if self._log:
-            plot = plot_creator(self._bounds, function=function)
-            plot(population,
-                 file='images/-1.png',
-                 title='INITIAL POPULATION')
-        for i in range(iterations):
+        for _ in range(iterations):
             population = reduce(lambda x, y: y(x), [population,
                                                     self._selector,
                                                     self._crossover,
                                                     self._mutator])
             if self._log:
-                print(str(i), ' ITERATION RESULTS')
                 scores = self._score(population)[:, np.newaxis]
-                log_data(labels=['N', 'X', 'Y', 'Fit'],
-                         data=np.round(np.hstack([population, scores]), 3))
-                print('MEAN: ', np.round(np.mean(scores), 3))
-                plot(population,
-                     file='images/' + str(i) + '.png',
-                     title=str(i) + ' ITERATION RESULTS')
+                df = pd.DataFrame(data=np.hstack([population, scores]),
+                                  columns=self.history.columns)
+                self.history = self.history.append(df, ignore_index=True)
         return population
 
     def _selector(self, population):
         scores = self._score(population)
-        # since scores can be negative
-        if np.any(scores < 0):
-            scores = np.subtract(scores, np.min(scores))
         # find probabilities
         probas = np.divide(scores, np.sum(scores))
         indices = np.argsort(probas).tolist()
@@ -71,11 +53,6 @@ class GeneticAlgorithm:
                     selected.append(i)
                     indices.remove(i)
                     break
-        if self._log:
-            data = np.hstack([np.round(population, 3)[selected],
-                              np.round(probas, 3)[selected, np.newaxis]])
-            print('SELECTION STAGE')
-            log_data(labels=['N', 'X', 'Y', 'P'], data=data)
         return population[selected]
 
     def _crossover(self, population):
@@ -86,9 +63,6 @@ class GeneticAlgorithm:
         y_top = np.hstack([y[1:], np.repeat(y[0], len(y[1:]))])
         # Make pairs
         population = np.transpose([x_top, y_top])
-        if self._log:
-            print('CROSSOVER STAGE')
-            log_data(labels=['N', 'X', 'Y'], data=np.round(population, 3))
         return population
 
     def _mutator(self, population):
@@ -104,10 +78,6 @@ class GeneticAlgorithm:
                     for i, pair in enumerate(mutation)]
         # Apply deltas element-wise
         population = np.add(population, mutation)
-        if self._log:
-            print('MUTATION STAGE')
-            log_data(labels=['N', 'X', 'Y', 'Dx', 'Dy'],
-                     data=np.hstack([np.round(population, 3), mutation]))
         return population
 
     def _init_population(self):
@@ -116,11 +86,9 @@ class GeneticAlgorithm:
                        for bounds in self._bounds]
                       for _ in range(self._population)]
         if self._log:
-            print('INITIAL POPULATION')
-            scores = self._score(population)[:, np.newaxis]
-            log_data(labels=['N', 'X', 'Y', 'Fit'],
-                     data=np.round(np.hstack([population, scores]), 3))
-            print('MEAN: ', np.round(np.mean(scores), 3))
+            score = self._score(population)[:, np.newaxis]
+            self.history = pd.DataFrame(data=np.hstack([population, score]),
+                                        columns=['X', 'Y', 'Fit'])
         return np.array(population)
 
     def _score(self, population):
