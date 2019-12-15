@@ -34,13 +34,15 @@ class GeneticAlgorithm:
                                                     self._mutator])
             if self._log:
                 scores = self._score(population)[:, np.newaxis]
-                df = pd.DataFrame(data=np.hstack([population, scores]),
+                df = pd.DataFrame(data=np.round(np.hstack([population, scores]), 3),
                                   columns=self.history.columns)
                 self.history = self.history.append(df, ignore_index=True)
         return population
 
     def _selector(self, population):
         scores = self._score(population)
+        if any(scores < 0):
+            scores = np.subtract(scores, np.min(scores))
         # find probabilities
         probas = np.divide(scores, np.sum(scores))
         indices = np.argsort(probas).tolist()
@@ -49,7 +51,7 @@ class GeneticAlgorithm:
             rolled = rd.uniform(0, np.sum(probas[indices]))
             for i in indices:
                 rolled -= probas[i]
-                if rolled < 0:
+                if rolled <= 0:
                     selected.append(i)
                     indices.remove(i)
                     break
@@ -87,7 +89,7 @@ class GeneticAlgorithm:
                       for _ in range(self._population)]
         if self._log:
             score = self._score(population)[:, np.newaxis]
-            self.history = pd.DataFrame(data=np.hstack([population, score]),
+            self.history = pd.DataFrame(data=np.round(np.hstack([population, score]), 3),
                                         columns=['X', 'Y', 'Fit'])
         return np.array(population)
 
